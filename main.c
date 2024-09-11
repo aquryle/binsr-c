@@ -80,9 +80,14 @@ void write_srec(FILE *output, const char *type, unsigned int address, const unsi
     line[idx++] = type[0];
     line[idx++] = type[1];
 
+    // アドレス長
+    size_t addr_len;
+    if (type[1] == '0' || type[1] == '1') addr_len = 2;
+    else if (type[2] == '2') addr_len = 3;
+    else addr_len = 4;
+
     // データ長（アドレス+データ+チェックサム）
-    size_t addr_len = type[1] == '1' ? 2 : type[1] == '2' ? 3 : 4;
-    size_t record_len = addr_len + data_len + 1;  // チェックサム含む
+    size_t record_len = addr_len + data_len + 1;
     sprintf((char *)&line[idx], "%02X", (unsigned int)record_len);
     idx += 2;
 
@@ -118,8 +123,6 @@ void write_srec(FILE *output, const char *type, unsigned int address, const unsi
  * @param argc
  * @param argv
  * @return int
- *
- * @bug アドレス、テキストの入力がおかしい
  */
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -144,28 +147,26 @@ int main(int argc, char *argv[]) {
     // ファーストアドレスの入力
     unsigned int first_address;
     printf("Start address (hex): ");
-    // scanf("%x", &first_address);
+    scanf("%x", &first_address);
+    getchar();
 
     // S0レコード用のテキスト入力
     char s0_text[32];
     unsigned int s0_len;
     printf("S0 record text (max 32 characters): ");
-    // scanf("%s", s0_text);
     if (fgets(s0_text, 32, stdin) == NULL) {
         exit(EXIT_FAILURE);
     }
+
+    // S0レコード書き出し
     s0_len = strlen(s0_text);
     if (s0_len > 0 && s0_text[s0_len - 1] == '\n') {
         // 改行だけ入力されたらS0レコードはなし
         s0_text[--s0_len] = '\0';
     }
-    else if (s0_len > 0 && s0_text[s0_len - 1] == '\r') {
-        // 改行だけ入力されたらS0レコードはなし
-        s0_text[--s0_len] = '\0';
-    }
-    else {
+    if (s0_len > 0) {
         // S0レコードの作成
-        write_srec(output_file, SREC_HEADER, 0x0000, (unsigned char *)s0_text, strlen(s0_text));
+        write_srec(output_file, SREC_HEADER, 0x0000, (unsigned char *)s0_text, s0_len);
     }
 
 
